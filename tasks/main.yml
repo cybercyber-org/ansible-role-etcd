@@ -41,3 +41,18 @@
     fstype: ext4
     opts: auto
     state: mounted
+- name: "chmod etcd-data"
+  file:
+    path: /srv/etcd
+    mode: '0700'
+    state: directory
+- name: "create etcd-service"
+  template:
+    src: files/etcd.service.template
+    dest: /etc/systemd/system/etcd.service
+- name: "start etcd"
+  systemd:
+    daemon_reload: yes
+    name: etcd
+    enabled: yes
+    state: started
