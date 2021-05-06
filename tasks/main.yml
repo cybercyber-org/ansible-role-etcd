@@ -25,3 +25,19 @@
   loop:
     - etcd
     - etcdctl
+- name: "create LV for etcd"
+  community.general.lvol:
+    vg: "{{ vg }}"
+    lv: etcd
+    size: 100M
+- name: "create filesystem for etcd"
+  community.general.filesystem:
+    fstype: ext4
+    dev: "/dev/{{ vg }}/etcd"
+- name: "mount filesystem for etcd"
+  ansible.posix.mount:
+    path: /srv/etcd
+    src: "/dev/{{ vg }}/etcd"
+    fstype: ext4
+    opts: auto
+    state: mounted
