@@ -21,7 +21,7 @@ ExecStart=/usr/local/bin/etcd \
 --initial-cluster-token etcd-cluster-0 \
 --initial-cluster {% for host in hostvars %}{{ host }}=https://{{ hostvars[host]['ansible_default_ipv4']['address'] }}:2380{% if not loop.last %},{% endif %}{% endfor %}{{ "\\\n" }}
 --initial-cluster-state new \
---data-dir=/var/lib/etcd
+--data-dir=/srv/etcd
 Restart=on-failure
 RestartSec=5
 Environment="ETCD_UNSUPPORTED_ARCH={{ etcd_arch }}"

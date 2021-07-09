@@ -29,7 +29,7 @@
   community.general.lvol:
     vg: "{{ vg }}"
     lv: etcd
-    size: 100M
+    size: 2G
 - name: "create filesystem for etcd"
   community.general.filesystem:
     fstype: ext4
