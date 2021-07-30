@@ -19,7 +19,7 @@ ExecStart=/usr/local/bin/etcd \
 --listen-client-urls https://{{ ansible_default_ipv4.address }}:2379,https://127.0.0.1:2379 \
 --advertise-client-urls https://{{ ansible_default_ipv4.address }}:2379 \
 --initial-cluster-token etcd-cluster-0 \
---initial-cluster {% for host in hostvars %}{{ host }}=https://{{ hostvars[host]['ansible_default_ipv4']['address'] }}:2380{% if not loop.last %},{% endif %}{% endfor %}{{ "\\\n" }}
+--initial-cluster {% for host in hostvars if hostvars[host]['k8s_controlplane'] %}{{ host }}=https://{{ hostvars[host]['ansible_default_ipv4']['address'] }}:2380{% if not loop.last %},{% endif %}{% endfor %}{{ "\\\n" }}
 --initial-cluster-state new \
 --data-dir=/srv/etcd
 Restart=on-failure
