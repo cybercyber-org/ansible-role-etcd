@@ -1,0 +1,52 @@
+- hosts: all
+  become: yes
+  tasks:
+    - name: create ca
+      delegate_to: localhost
+      run_once: true
+      become: no
+      shell:
+        cmd: . ./commands
+        creates: ca.pem
+      args:
+        chdir: pki/
+    - name: create certificates
+      delegate_to: localhost
+      run_once: true
+      become: no
+      shell:
+        cmd: . ./api-server-cert.sh
+        creates: kubernetes.pem
+      args:
+        chdir: pki/
+    - name: install lvm
+      package:
+        name: lvm2
+    - name: create pv image
+      shell:
+        cmd: dd if=/dev/zero of=/pv.img bs=1M count=3000
+        creates: /pv.img
+    - name: create loop dev
+      shell:
+        cmd: losetup /dev/loop0 /pv.img
+        creates: /dev/loop0
+    - name: create vg
+      community.general.lvg:
+        vg: lvm
+        pvs: /dev/loop0
+    - name: create config directory
+      file:
+        state: directory
+        path: /etc/etcd
+    - name: install certificates and keys
+      copy:
+        src: "./pki//{{ item }}"
+        dest: "/etc/etcd/{{ item }}"
+      loop:
+        - kubernetes.pem
+        - kubernetes-key.pem
+        - ca.pem
+    - name: install etcd
+      include_role:
+        name:  ../../.
+
