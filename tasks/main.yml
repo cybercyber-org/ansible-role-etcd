@@ -83,11 +83,9 @@
     - name: parse member_list
       set_fact:
         working_cluster_member: "{{ ((member_list.stdout | from_json).members | map(attribute='clientURLs'))[0][0] }}"
-      when: member_list.rc == 0
     - name: parse member_list
       set_fact:
         cluster_members: "{{ (member_list.stdout | from_json).members | map(attribute='name') }}"
-      when: member_list.rc == 0
 
     - name: add member to cluster
       when: inventory_hostname not in cluster_members
