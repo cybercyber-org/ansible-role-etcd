@@ -7,6 +7,16 @@
   set_fact:
     etcd_arch: arm64
   when: ansible_architecture == "aarch64"
+
+- name: "get hostvars into dict"
+  set_fact:
+    hostvars_dict: "{{ hostvars }}"
+- name: "collect hosts that should run etcd"
+  set_fact:
+    # This is done twice: Once assuming that `etcd` is a boolean and once assuming it's a string
+    # The latter is necessary as vagrant can only pass in strings.
+    etcd_hosts: "{{ (hostvars_dict.values() | selectattr('etcd', 'equalto', 'true') | map(attribute='inventory_hostname') | list) + (hostvars_dict.values() | selectattr('etcd') | map(attribute='inventory_hostname') | list) }}"
+
 - name: "download etcd"
   get_url:
     url: "https://github.com/etcd-io/etcd/releases/download/v{{ etcd_version }}/etcd-v{{ etcd_version }}-linux-{{ etcd_arch }}.tar.gz"
@@ -46,6 +56,44 @@
     path: /srv/etcd
     mode: '0700'
     state: directory
+
+- name: try to connect to each node to get member list
+  shell:
+    cmd: |
+      {% for host in etcd_hosts %}
+      IP={{ hostvars[host]['ansible_'+hostvars[host].interface].ipv4.address }}
+      ETCDCTL_API=3 etcdctl member list --endpoints=https://$IP:2379 --cacert=/etc/etcd/ca.pem --cert=/etc/etcd/kubernetes.pem --key=/etc/etcd/kubernetes-key.pem -w json 2>/dev/null && exit 0
+      {% endfor %}
+  register: member_list
+  ignore_errors: yes
+
+- name: create new cluster
+  when: member_list.rc != 0
+  block:
+    - name: set cluster_state
+      set_fact:
+        cluster_state: new
+
+- name: add to existing cluster
+  when: member_list.rc == 0
+  block:
+    - name: set cluster_state
+      set_fact:
+        cluster_state: existing
+    - name: parse member_list
+      set_fact:
+        working_cluster_member: "{{ ((member_list.stdout | from_json).members | map(attribute='clientURLs'))[0][0] }}"
+      when: member_list.rc == 0
+    - name: parse member_list
+      set_fact:
+        cluster_members: "{{ (member_list.stdout | from_json).members | map(attribute='name') }}"
+      when: member_list.rc == 0
+
+    - name: add member to cluster
+      when: inventory_hostname not in cluster_members
+      shell: |
+        ETCDCTL_API=3 etcdctl --endpoints={{ working_cluster_member }} --cacert=/etc/etcd/ca.pem --cert=/etc/etcd/kubernetes.pem --key=/etc/etcd/kubernetes-key.pem member add {{ inventory_hostname }} --peer-urls="https://{{ vars['ansible_'~interface].ipv4.address }}:2380"
+
 - name: "create etcd-service"
   template:
     src: files/etcd.service.template
