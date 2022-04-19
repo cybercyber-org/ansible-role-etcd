@@ -5,6 +5,8 @@ Documentation=https://github.com/coreos
 [Service]
 Type=notify
 ExecStart=/usr/local/bin/etcd \
+  --heartbeat-interval=300 \
+  --election-timeout=3000 \
   --name {{ inventory_hostname }} \
   --cert-file=/etc/etcd/kubernetes.pem \
   --key-file=/etc/etcd/kubernetes-key.pem \
@@ -25,6 +27,8 @@ ExecStart=/usr/local/bin/etcd \
 Restart=on-failure
 RestartSec=5
 Environment="ETCD_UNSUPPORTED_ARCH={{ etcd_arch }}"
+IOSchedulingClass=best-effort
+IOSchedulingPriority=0
 
 [Install]
 WantedBy=multi-user.target
