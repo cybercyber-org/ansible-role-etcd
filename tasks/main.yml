@@ -35,6 +35,7 @@
   loop:
     - etcd
     - etcdctl
+  notify: Restart etcd
 - name: "create LV for etcd"
   community.general.lvol:
     vg: "{{ vg }}"
@@ -98,9 +99,13 @@
   template:
     src: files/etcd.service.template
     dest: /etc/systemd/system/etcd.service
+  notify: Restart etcd
 - name: "start etcd"
   systemd:
     daemon_reload: yes
     name: etcd
     enabled: yes
     state: started
+# restart (and wait for health) now, before later roles in the play restart kube-apiserver
+- name: "restart etcd if needed"
+  meta: flush_handlers

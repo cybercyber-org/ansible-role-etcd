@@ -1,4 +1,14 @@
 - name: Restart etcd
-  service:
+  systemd:
     name: etcd
     state: restarted
+    daemon_reload: yes
+- name: Wait for etcd to be healthy
+  listen: Restart etcd
+  shell: |
+    ETCDCTL_API=3 etcdctl endpoint health --endpoints=https://127.0.0.1:2379 --cacert=/etc/etcd/ca.pem --cert=/etc/etcd/kubernetes.pem --key=/etc/etcd/kubernetes-key.pem
+  register: etcd_health
+  until: etcd_health.rc == 0
+  retries: 30
+  delay: 5
+  changed_when: false
